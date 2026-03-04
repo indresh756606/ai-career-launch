@@ -1,19 +1,36 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Phone, Mail } from "lucide-react";
+import { MapPin, Phone, Mail, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const ContactSection = () => {
   const [form, setForm] = useState({ name: "", phone: "", email: "", message: "" });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.phone.trim()) {
       toast.error("Please fill in your name and phone number.");
       return;
     }
-    toast.success("Thank you! We will contact you soon.");
-    setForm({ name: "", phone: "", email: "", message: "" });
+    setLoading(true);
+    try {
+      const { error } = await supabase.from("contact_submissions").insert({
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim() || null,
+        message: form.message.trim() || null,
+        source: "contact_form",
+      });
+      if (error) throw error;
+      toast.success("Thank you! We will contact you soon.");
+      setForm({ name: "", phone: "", email: "", message: "" });
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -92,9 +109,11 @@ const ContactSection = () => {
             />
             <button
               type="submit"
-              className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-heading font-semibold btn-glow"
+              disabled={loading}
+              className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-heading font-semibold btn-glow disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              Send Message
+              {loading && <Loader2 className="animate-spin" size={18} />}
+              {loading ? "Sending..." : "Send Message"}
             </button>
           </motion.form>
         </div>
